@@ -1,0 +1,177 @@
+{
+  "openapi" : "3.1.0",
+  "components" : {
+    "schemas" : {
+      "CreatePersonRequest" : {
+        "type" : "object",
+        "required" : [ "firstName", "lastName", "email" ],
+        "properties" : {
+          "firstName" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "lastName" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "email" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Instant" : {
+        "type" : "string",
+        "format" : "date-time",
+        "examples" : [ "2022-03-10T16:15:50Z" ]
+      },
+      "Person" : {
+        "type" : "object",
+        "required" : [ "id", "firstName", "lastName", "email", "createdAt", "updatedAt" ],
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "firstName" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "lastName" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "email" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "updatedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "deletedAt" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "UUID" : {
+        "type" : "string",
+        "format" : "uuid",
+        "pattern" : "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
+      }
+    }
+  },
+  "paths" : {
+    "/api/v1/person" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "limit",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 100
+          }
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/Person"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary" : "List Person -3 OYQ 5 CQ",
+        "tags" : [ "Person Resource" ]
+      },
+      "post" : {
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreatePersonRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Person"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Create Person",
+        "tags" : [ "Person Resource" ]
+      }
+    },
+    "/api/v1/person/{id}" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Person"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Get Person",
+        "tags" : [ "Person Resource" ]
+      }
+    }
+  },
+  "info" : {
+    "title" : "Service1 API (Development)",
+    "version" : "0.0.1",
+    "description" : "Service1 API",
+    "contact" : {
+      "email" : "danieldo@acme.com"
+    }
+  },
+  "servers" : [ {
+    "url" : "http://localhost:8080",
+    "description" : "Auto generated value"
+  }, {
+    "url" : "http://0.0.0.0:8080",
+    "description" : "Auto generated value"
+  } ]
+}

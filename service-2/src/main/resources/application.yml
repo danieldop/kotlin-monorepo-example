@@ -1,0 +1,84 @@
+quarkus:
+  application:
+    name: service-2
+    version: 0.0.1
+  log:
+    level: INFO
+    handler:
+      console:
+        request-handler:
+          format: "%d{HH:mm:ss} %-5p request.id=%X{request.id} request.path=%X{request.path} [%c{2.}] (%t) %s%n"
+    category:
+      "com.acme":
+        handlers: request-handler
+        use-parent-handlers: false
+  http:
+    port: 8081
+  ssl:
+    native: true
+  rest:
+    path: /api
+    jackson:
+      optimization:
+        enable-reflection-free-serializers: true
+  smallrye-openapi:
+    info-title: Service2 API
+    info-description: Service2 API
+    info-contact-email: danieldo@acme.com
+    additional-docs-directory: openapi/
+    store-schema-directory: .
+  mongodb:
+    uuid-representation: standard
+  container-image:
+    build: true
+    push: true
+    image: ghcr.io/danieldop/${quarkus.application.name}:${quarkus.application.version}
+
+  messaging:
+    incoming:
+      person-in:
+        connector: smallrye-kafka
+        topic: person
+        value.deserializer: io.quarkus.kafka.client.serialization.ObjectMapperDeserializer
+
+"%prod":
+  quarkus:
+    mongodb:
+      database: demo
+      connection-string: mongodb://quarkus:quarkus@127.0.0.1:27017/
+
+"%staging":
+  quarkus:
+    mongodb:
+      database: demo
+      connection-string: mongodb://quarkus:quarkus@
+
+"%dev":
+  quarkus:
+    log:
+      level: INFO
+      category:
+        "con.acme":
+          level: DEBUG
+        "WebApplicationException":
+          level: DEBUG
+    smallrye-openapi:
+      info-title: Service2 API (Development)
+    live-reload:
+      instrumentation: true
+    mongodb:
+      devservices:
+        port: 27017
+    observability:
+      enabled: true
+      dev-resources: false
+      lgtm:
+        grafana-port: 3001
+        otel-grpc-port: 5317
+        otel-http-port: 5318
+
+"%test":
+  quarkus:
+    mongodb:
+      devservices:
+        port: 27017
