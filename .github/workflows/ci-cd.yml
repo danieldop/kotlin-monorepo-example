@@ -1,0 +1,177 @@
+name: CI/CD
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build and test
+    runs-on: ubuntu-latest
+
+    outputs:
+      gradle_version_raw: ${{ steps.version.outputs.gradle_version_raw }}
+      semver_version: ${{ steps.version.outputs.semver_version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build and test
+        run: ./gradlew --no-daemon clean build
+
+      - name: Extract Gradle version
+        id: version
+        run: |
+          RAW_VERSION=$(grep -m1 "version = \"" build.gradle.kts | sed -E 's/.*version = \"([^\"]+)\".*/\1/')
+          echo "Detected Gradle version: $RAW_VERSION"
+          # naive normalization: if it's of form X.Y-SUFFIX, convert to X.Y.0-SUFFIX
+          if echo "$RAW_VERSION" | grep -Eq '^[0-9]+\.[0-9]+(-.*)?$'; then
+            BASE=${RAW_VERSION%%-*}
+            SUFFIX=${RAW_VERSION#${BASE}}
+            MAJOR=$(echo "$BASE" | cut -d. -f1)
+            MINOR=$(echo "$BASE" | cut -d. -f2)
+            NORMALIZED="${MAJOR}.${MINOR}.0${SUFFIX}"
+          else
+            NORMALIZED="$RAW_VERSION"
+          fi
+          echo "Normalized SemVer: $NORMALIZED"
+          echo "gradle_version_raw=$RAW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "semver_version=$NORMALIZED" >> "$GITHUB_OUTPUT"
+
+  publish-platform:
+    name: Publish platform package
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'push' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Publish platform module
+        env:
+          MAVEN_REPO_URL: ${{ secrets.MAVEN_REPO_URL }}
+          MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
+        run: |
+          ./gradlew --no-daemon :platform:publish \
+            -PmavenRepoUrl="$MAVEN_REPO_URL" \
+            -PmavenUser="$MAVEN_USERNAME" \
+            -PmavenPassword="$MAVEN_PASSWORD"
+
+  artifacts-and-images:
+    name: Artifacts and container images
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    env:
+      SEMVER_VERSION: ${{ needs.build-and-test.outputs.semver_version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Upload service-1 JARs
+        uses: actions/upload-artifact@v4
+        with:
+          name: service-1-jars
+          path: |
+            service-1/build/libs/*.jar
+
+      - name: Upload service-2 JARs
+        uses: actions/upload-artifact@v4
+        with:
+          name: service-2-jars
+          path: |
+            service-2/build/libs/*.jar
+
+      - name: Compute image tags
+        id: tags
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            PR_NUMBER="${{ github.event.pull_request.number }}"
+            IMAGE_TAG="${SEMVER_VERSION}-pr${PR_NUMBER}-${SHORT_SHA}"
+            LATEST_TAG=""
+          else
+            # push to main
+            IMAGE_TAG="${SEMVER_VERSION}"
+            LATEST_TAG="latest"
+          fi
+          echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+          echo "latest_tag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push service-1 image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./service-1
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/service-1:${{ steps.tags.outputs.image_tag }}
+            ${{ steps.tags.outputs.latest_tag && format('ghcr.io/{0}/service-1:{1}', github.repository_owner, steps.tags.outputs.latest_tag) || '' }}
+
+      - name: Build and push service-2 image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./service-2
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/service-2:${{ steps.tags.outputs.image_tag }}
+            ${{ steps.tags.outputs.latest_tag && format('ghcr.io/{0}/service-2:{1}', github.repository_owner, steps.tags.outputs.latest_tag) || '' }}
