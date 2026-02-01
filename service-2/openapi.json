@@ -26,7 +26,7 @@
       },
       "Person" : {
         "type" : "object",
-        "required" : [ "id", "firstName", "lastName", "email", "createdAt", "updatedAt" ],
+        "required" : [ "id", "firstName", "lastName", "email", "createdAt", "updatedAt", "deletedAt" ],
         "properties" : {
           "id" : {
             "$ref" : "#/components/schemas/UUID"
