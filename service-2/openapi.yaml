@@ -121,7 +121,7 @@ paths:
       tags:
       - Person Resource
 info:
-  title: Service2 API (Development)
+  title: Service2 API
   version: 0.0.1
   description: Service2 API
   contact:
