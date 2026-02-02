@@ -31,6 +31,7 @@ components:
       - email
       - createdAt
       - updatedAt
+      - deletedAt
       properties:
         id:
           $ref: "#/components/schemas/UUID"
@@ -120,7 +121,7 @@ paths:
       tags:
       - Person Resource
 info:
-  title: Service1 API (Development)
+  title: Service1 API
   version: 0.0.1
   description: Service1 API
   contact:

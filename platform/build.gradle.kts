@@ -50,7 +50,6 @@ dependencies {
 //    cloud
 //    implementation("io.quarkus:quarkus-kubernetes")
 //    api("io.quarkiverse.helm:quarkus-helm")
-    implementation("io.quarkus:quarkus-container-image-podman")
     implementation("io.quarkus:quarkus-smallrye-health")
 //    testing
     testImplementation("io.quarkus:quarkus-junit5")

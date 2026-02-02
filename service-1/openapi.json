@@ -26,7 +26,7 @@
       },
       "Person" : {
         "type" : "object",
-        "required" : [ "id", "firstName", "lastName", "email", "createdAt", "updatedAt" ],
+        "required" : [ "id", "firstName", "lastName", "email", "createdAt", "updatedAt", "deletedAt" ],
         "properties" : {
           "id" : {
             "$ref" : "#/components/schemas/UUID"
@@ -160,7 +160,7 @@
     }
   },
   "info" : {
-    "title" : "Service1 API (Development)",
+    "title" : "Service1 API",
     "version" : "0.0.1",
     "description" : "Service1 API",
     "contact" : {
